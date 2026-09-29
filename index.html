@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学习规划</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230F766E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/%3E%3Cpath d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/%3E%3Cpath d='M12 6.5l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6.5l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></svg>
+      </span>
+      <div class="brand-text">
+        <h1>学习规划</h1>
+        <p>给学习一个清晰的节奏</p>
+      </div>
+    </div>
+    <button class="today-chip" id="todayChip" title="查看今日任务">
+      今日 <b id="chipNum">0/0</b>
+    </button>
+  </header>
+
+  <nav class="tabs" id="tabNav">
+    <button class="tab-btn active" data-tab="ai">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      AI 助手
+    </button>
+    <button class="tab-btn" data-tab="task">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m9 12 2 2 4-4"/></svg>
+      任务
+    </button>
+    <button class="tab-btn" data-tab="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M16 2v4"/><circle cx="12" cy="15" r="1"/><circle cx="16" cy="15" r="1"/><circle cx="8" cy="15" r="1"/></svg>
+      日历
+    </button>
+    <button class="tab-btn" data-tab="pomodoro">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>
+      番茄钟
+    </button>
+    <button class="tab-btn" data-tab="note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+      备忘
+    </button>
+    <button class="tab-btn" data-tab="exam">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>
+      考试
+    </button>
+    <button class="tab-btn" data-tab="goal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+      目标
+    </button>
+    <button class="tab-btn" data-tab="growth">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      成长
+    </button>
+    <button class="tab-btn" data-tab="resource">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      资源
+    </button>
+  </nav>
+
+  <main>
+
+    <!-- ===== AI 助手 ===== -->
+    <section id="tab-ai" class="tab-content active">
+      <div class="ai-head">
+        <span class="ai-status" id="aiStatusBar"><i class="dot"></i><span id="aiStatusText">正在检测…</span></span>
+        <span class="ai-head-btns">
+          <button class="btn-ghost btn-sm" id="aiSettingsBtn">配置 AI</button>
+          <button class="btn-ghost btn-sm" onclick="clearChat()">清空</button>
+        </span>
+      </div>
+      <div id="chatBox" class="chat-box"></div>
+      <form class="chat-input" id="chatForm">
+        <input type="text" id="chatInput" placeholder="说点什么，如：帮我安排今天的学习" autocomplete="off">
+        <button class="btn-primary" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+          发送
+        </button>
+      </form>
+      <div class="chips">
+        <button class="chip" data-text="帮我加一个每天背50个单词的任务">加每日任务</button>
+        <button class="chip" data-text="帮我安排今天的学习">安排今天</button>
+        <button class="chip" data-text="今天还有什么任务">查今日任务</button>
+        <button class="chip" data-text="推荐番茄钟">推荐番茄钟</button>
+      </div>
+    </section>
+
+    <!-- ===== 任务 ===== -->
+    <section id="tab-task" class="tab-content">
+      <div class="checkin">
+        <div class="checkin-info">
+          <div class="checkin-title">今日打卡</div>
+          <div class="checkin-meta" id="checkMeta">完成今日任务后可打卡</div>
+        </div>
+        <button class="btn-primary" id="checkInBtn">打卡</button>
+      </div>
+
+      <div class="energy-tip" id="energyTip"></div>
+      <div class="periodic-tip" id="periodicTip" style="display:none"></div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>任务清单</h2>
+          <span class="card-sub" id="taskCountText"></span>
+        </div>
+        <form class="task-add" id="taskForm">
+          <input type="text" id="taskInput" placeholder="输入任务，如：背英语单词 50 个" autocomplete="off">
+          <div class="task-options">
+            <select id="taskType">
+              <option value="once">单次</option>
+              <option value="daily">每日</option>
+              <option value="weekly">每周</option>
+              <option value="monthly">每月</option>
+            </select>
+            <div class="task-count" id="taskCountWrap" style="display:none">
+              <input type="number" id="taskCount" value="1" min="1"><span>次</span>
+            </div>
+            <select id="taskEnergy" title="精力消耗">
+              <option value="mid">中等耗能</option>
+              <option value="high">高耗能</option>
+              <option value="low">轻松</option>
+            </select>
+            <button class="btn-primary" type="submit">添加</button>
+          </div>
+        </form>
+        <div class="task-filter" id="taskFilter">
+          <button class="f-btn active" data-type="all">全部</button>
+          <button class="f-btn" data-type="once">单次</button>
+          <button class="f-btn" data-type="daily">每日</button>
+          <button class="f-btn" data-type="weekly">每周</button>
+          <button class="f-btn" data-type="monthly">每月</button>
+        </div>
+        <ul id="taskList" class="task-list"></ul>
+      </div>
+    </section>
+
+    <!-- ===== 日历 ===== -->
+    <section id="tab-calendar" class="tab-content">
+      <div class="card">
+        <div class="calendar-head">
+          <h2>学习日历</h2>
+          <div class="calendar-nav">
+            <button id="calPrevBtn" aria-label="上个月">‹</button>
+            <span class="month-label" id="calMonthLabel"></span>
+            <button id="calNextBtn" aria-label="下个月">›</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calGrid"></div>
+        <div class="calendar-legend">
+          <span><i class="dot exam-dot"></i> 考试</span>
+          <span><i class="dot task-dot"></i> 任务打卡</span>
+          <span><i class="dot pomo-dot"></i> 番茄完成</span>
+        </div>
+        <div class="calendar-day-detail" id="calDetail"></div>
+      </div>
+    </section>
+
+    <!-- ===== 番茄钟 ===== -->
+    <section id="tab-pomodoro" class="tab-content">
+      <div class="card pomodoro">
+        <div class="presets" id="presetRow">
+          <button class="preset active" data-w="25" data-b="5">25 + 5</button>
+          <button class="preset" data-w="50" data-b="10">50 + 10</button>
+          <button class="preset" data-w="15" data-b="3">15 + 3</button>
+          <button class="preset" data-w="45" data-b="10">45 + 10</button>
+          <button class="preset" id="customPreset">自定义</button>
+        </div>
+        <div class="custom-row" id="customRow" style="display:none">
+          <input type="number" id="customWork" value="25" min="1" max="180" title="专注分钟">
+          <span>专注</span>
+          <input type="number" id="customBreak" value="5" min="1" max="60" title="休息分钟">
+          <span>休息</span>
+          <button class="btn-primary btn-sm" id="customApply">应用</button>
+        </div>
+        <div class="pomodoro-display">
+          <div class="pomodoro-mode" id="pomodoroMode">专注中</div>
+          <div class="pomodoro-time" id="pomodoroTime">25:00</div>
+          <div class="pomodoro-session" id="pomodoroSession">第 1 个番茄</div>
+        </div>
+        <div class="pomodoro-actions">
+          <button class="btn-primary" id="pomodoroBtn">开始</button>
+          <button class="btn-ghost" onclick="resetPomodoro()">重置</button>
+          <button class="btn-ghost" onclick="skipSession()">跳过</button>
+        </div>
+        <p class="pomodoro-count" id="pomodoroCount">今日已完成 0 个番茄</p>
+        <div class="ringtone-box">
+          <div class="ringtone-head">
+            <span class="sub-label">到时铃声</span>
+            <span class="ringtone-tip" id="ringtoneTip">经典</span>
+          </div>
+          <div class="ringtone-options">
+            <button class="preset ring-preset active" data-ring="bell">经典</button>
+            <button class="preset ring-preset" data-ring="digital">数码</button>
+            <button class="preset ring-preset" data-ring="soft">轻柔</button>
+            <button class="btn-ghost btn-sm" id="ringTestBtn">试听</button>
+            <button class="btn-ghost btn-sm" id="ringUploadBtn">上传铃声</button>
+            <input type="file" id="ringFile" accept="audio/*" style="display:none">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 备忘录 ===== -->
+    <section id="tab-note" class="tab-content">
+      <div id="noteListView">
+        <button class="btn-ghost btn-block" onclick="newNote()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          新建备忘录
+        </button>
+        <ul id="noteList" class="note-list"></ul>
+      </div>
+      <div class="card" id="noteEditView" style="display:none">
+        <input id="noteTitle" placeholder="标题，如：错题整理">
+        <textarea id="noteContent" rows="8" placeholder="记录你的学习心得、易错知识点..."></textarea>
+        <div class="row-gap">
+          <button class="btn-primary" onclick="saveNote()">保存</button>
+          <button class="btn-ghost" onclick="cancelEdit()">返回</button>
+          <button class="btn-danger" onclick="deleteNote()">删除</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 考试 ===== -->
+    <section id="tab-exam" class="tab-content">
+      <div class="card exam">
+        <div class="exam-add">
+          <input id="examNameInput" list="examPresets" placeholder="考试名称，如：四六级 / 专升本 / 普通话" autocomplete="off">
+          <datalist id="examPresets">
+            <option value="小升初"></option>
+            <option value="中考"></option>
+            <option value="高考"></option>
+            <option value="四六级"></option>
+            <option value="考研"></option>
+            <option value="专升本"></option>
+            <option value="普通话"></option>
+            <option value="教师资格证"></option>
+          </datalist>
+          <input type="date" id="examNewDate">
+          <button class="btn-primary" id="examAddBtn">添加</button>
+        </div>
+        <div class="count-tip" id="countTip">请先添加考试</div>
+        <ul id="examList" class="exam-list"></ul>
+        <div class="risk-panel" id="riskPanel" style="display:none">
+          <div class="risk-row"><span>今日任务进度</span><b id="progressText">0 / 0</b></div>
+          <div class="progress"><i id="progressFill"></i></div>
+          <p class="risk-tip" id="riskTip"></p>
+        </div>
+        <div class="exam-advice" id="examAdvice" style="display:none">
+          <div class="advice-head">
+            <span class="advice-title">备考建议</span>
+            <button class="btn-ghost btn-sm" id="adviceAiBtn">让 AI 写详细建议</button>
+          </div>
+          <div class="advice-body" id="adviceBody"></div>
+          <div class="advice-ai" id="adviceAiResult"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 目标 ===== -->
+    <section id="tab-goal" class="tab-content">
+      <div class="card">
+        <div class="card-head">
+          <h2>目标进度</h2>
+          <span class="card-sub">原地不动等于退步</span>
+        </div>
+        <div class="goal-add">
+          <input id="goalInput" placeholder="输入目标，如：一年内掌握UG软件" autocomplete="off">
+          <button class="btn-primary" id="goalAddBtn">添加</button>
+        </div>
+        <ul id="goalList" class="goal-list"></ul>
+        <p class="hint">没有推进的每一天，目标进度会缓慢衰减；完成任何一项任务，进度就会回升。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>四层拆解器</h2>
+          <span class="card-sub">年度 → 月度 → 周 → 日</span>
+        </div>
+        <div class="decompose-input">
+          <input id="decGoal" placeholder="输入总目标，如：一年内掌握UG软件" autocomplete="off">
+          <select id="decMonths">
+            <option value="12">12个月</option>
+            <option value="6">6个月</option>
+            <option value="3">3个月</option>
+          </select>
+          <button class="btn-primary" id="decBtn">自动拆解</button>
+        </div>
+        <div id="decTree"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>本周规划 vs 现实</h2>
+          <span class="card-sub">每周自动重置</span>
+        </div>
+        <div class="weekly-cols">
+          <div class="weekly-col">
+            <div class="sub-title">本周计划</div>
+            <ul id="planList" class="week-items"></ul>
+            <div class="week-add">
+              <input id="planInput" placeholder="打算做什么" autocomplete="off">
+              <button class="btn-primary btn-sm" id="planAddBtn">加</button>
+            </div>
+          </div>
+          <div class="weekly-col">
+            <div class="sub-title">实际完成</div>
+            <ul id="actualList" class="week-items"></ul>
+            <div class="week-add">
+              <input id="actualInput" placeholder="实际做了什么" autocomplete="off">
+              <button class="btn-primary btn-sm" id="actualAddBtn">加</button>
+            </div>
+          </div>
+        </div>
+        <p class="weekly-summary" id="weeklySummary"></p>
+      </div>
+    </section>
+
+    <!-- ===== 成长 ===== -->
+    <section id="tab-growth" class="tab-content">
+      <div class="card">
+        <div class="card-head">
+          <h2>时间胶囊</h2>
+          <span class="card-sub">写给未来的自己</span>
+        </div>
+        <div id="capsuleListView">
+          <ul id="capsuleList" class="capsule-list"></ul>
+          <button class="btn-ghost btn-block" id="capsuleNewBtn">+ 写一封信</button>
+        </div>
+        <div id="capsuleEditView" style="display:none">
+          <input id="capsuleTitle" placeholder="标题，如：写给一年后的自己">
+          <textarea id="capsuleContent" rows="5" placeholder="想对未来的自己说什么…"></textarea>
+          <input type="date" id="capsuleDate">
+          <div class="row-gap">
+            <button class="btn-primary" id="capsuleSaveBtn">封存</button>
+            <button class="btn-ghost" id="capsuleCancelBtn">返回</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>阻力日志</h2>
+          <span class="card-sub">记录为什么没完成</span>
+        </div>
+        <div class="obstacle-add">
+          <select id="obstacleReason">
+            <option value="偷懒">偷懒</option>
+            <option value="知识点太难">知识点太难</option>
+            <option value="身体疲惫">身体疲惫</option>
+            <option value="外界干扰">外界干扰</option>
+            <option value="其他">其他</option>
+          </select>
+          <button class="btn-primary btn-sm" id="obstacleAddBtn">记录</button>
+        </div>
+        <div class="obstacle-stats" id="obstacleStats"></div>
+        <ul id="obstacleList" class="obstacle-list"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>里程碑相册</h2>
+          <span class="card-sub">保存成长画面，本地存储</span>
+        </div>
+        <div id="milestoneForm" style="display:none">
+          <input id="msTitle" placeholder="里程碑名称，如：完成UG基础学习">
+          <input type="file" id="msFile" accept="image/*">
+          <textarea id="msNote" rows="2" placeholder="一句话记录此刻"></textarea>
+          <div class="row-gap">
+            <button class="btn-primary" id="msSaveBtn">保存</button>
+            <button class="btn-ghost" id="msCancelBtn">取消</button>
+          </div>
+        </div>
+        <button class="btn-ghost btn-block" id="msNewBtn">+ 添加里程碑</button>
+        <div class="milestone-timeline" id="msTimeline"></div>
+      </div>
+    </section>
+
+    <!-- ===== 资源仓库 ===== -->
+    <section id="tab-resource" class="tab-content">
+      <div class="card">
+        <div class="card-head">
+          <h2>资源仓库</h2>
+          <span class="card-sub">资料与学习链接</span>
+        </div>
+        <div class="resource-add">
+          <input id="resTitle" placeholder="资料名，如：UG入门笔记" autocomplete="off">
+          <select id="resType">
+            <option value="note">笔记/摘抄</option>
+            <option value="link">学习链接</option>
+          </select>
+        </div>
+        <textarea id="resContent" rows="3" placeholder="笔记内容，或链接地址（https://…）"></textarea>
+        <button class="btn-primary" id="resAddBtn">保存资料</button>
+        <ul id="resList" class="res-list"></ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== AI 设置 ===== -->
+<div class="modal" id="aiSettings" style="display:none">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>AI 设置</h3>
+      <button class="icon-btn" onclick="closeAiSettings()" aria-label="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <label class="lbl">联网 AI</label>
+    <div class="seg" id="aiModeSeg">
+      <button class="seg-btn active" data-mode="on">开启</button>
+      <button class="seg-btn" data-mode="off">仅离线</button>
+    </div>
+
+    <label class="lbl">服务商</label>
+    <select id="aiProvider">
+      <option value="free">免费在线（无需密钥）</option>
+      <option value="siliconflow">硅基流动 SiliconFlow</option>
+      <option value="deepseek">DeepSeek</option>
+      <option value="openrouter">OpenRouter</option>
+    </select>
+
+    <div id="keyWrap">
+      <label class="lbl">API Key（仅保存在本机浏览器）</label>
+      <input type="password" id="aiApiKey" placeholder="sk-..." autocomplete="off">
+    </div>
+
+    <label class="lbl">模型（可选，留空用默认）</label>
+    <input type="text" id="aiModel" placeholder="如 deepseek-chat">
+
+    <p class="hint" id="aiProviderHint"></p>
+
+    <div class="row-gap">
+      <button class="btn-primary" onclick="saveAiConfig()">保存</button>
+      <button class="btn-ghost" id="aiTestBtn" onclick="testAi()">测试连接</button>
+    </div>
+    <p class="test-result" id="aiTestResult"></p>
+  </div>
+</div>
+
+<!-- ===== 首次使用引导 ===== -->
+<div class="modal" id="setupOverlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-head"><h3>开始使用</h3></div>
+    <p class="hint">设置你的考试目标，我们会生成一份建议任务清单。</p>
+
+    <label class="lbl">考试类型</label>
+    <select id="setupExamType">
+      <option value="">请选择</option>
+      <option value="小升初">小升初</option>
+      <option value="中考">中考</option>
+      <option value="高考">高考</option>
+      <option value="四六级">四六级</option>
+      <option value="考研">考研</option>
+      <option value="专升本">专升本</option>
+      <option value="其他">其他</option>
+    </select>
+    <div id="setupCustomWrap" style="display:none">
+      <label class="lbl">自定义考试名称</label>
+      <input type="text" id="setupCustomName" placeholder="如：雅思">
+    </div>
+
+    <label class="lbl">考试日期</label>
+    <input type="date" id="setupExamDate">
+
+    <div id="setupStep2" style="display:none">
+      <label class="lbl">建议任务（可勾选）</label>
+      <ul id="suggestTaskList"></ul>
+    </div>
+
+    <div class="row-gap">
+      <button class="btn-primary" id="setupNextBtn" onclick="setupNext()">生成建议任务</button>
+      <button class="btn-primary" id="setupConfirmBtn" style="display:none" onclick="setupConfirm()">确认创建</button>
+      <button class="btn-ghost" onclick="skipSetup()">跳过</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
