@@ -1111,7 +1111,7 @@ async function requestAI(text, isTest){
     }
 
     var ctrl = new AbortController();
-    var timer = setTimeout(function(){ ctrl.abort(); }, 40000);
+    var timer = setTimeout(function(){ ctrl.abort(); }, 12000); // 修复：超时改为12秒
     try {
         var res = await fetch(cfg.url, {
             method: 'POST',
@@ -1263,9 +1263,22 @@ function renderChat(){
     box.scrollTop = box.scrollHeight;
 }
 
+function appendChatMessage(m) {
+    var box = $("chatBox");
+    var loadingTip = box.querySelector('.msg.loading');
+    if (loadingTip) loadingTip.remove();
+
+    var div = document.createElement("div");
+    div.className = "msg " + (m.role === 'system' ? 'system' : m.role);
+    div.textContent = m.content;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+
 function pushAi(content, isSystem){
-    chatHistory.push({ role: isSystem ? 'system' : 'ai', content: content });
-    renderChat();
+    var m = { role: isSystem ? 'system' : 'ai', content: content };
+    chatHistory.push(m);
+    appendChatMessage(m);
     saveChat();
 }
 
@@ -1275,8 +1288,9 @@ function sendMsg(autoText){
     if (!text || isReplying) return;
     if (!autoText) input.value = "";
 
-    chatHistory.push({ role: "user", content: text });
-    renderChat();
+    var userMsg = { role: "user", content: text };
+    chatHistory.push(userMsg);
+    appendChatMessage(userMsg);
     saveChat();
 
     var box = $("chatBox");
@@ -1293,6 +1307,7 @@ function sendMsg(autoText){
 }
 
 async function handleReply(text, loading){
+    // 1) 本地可执行的动作意图优先
     var local = localAction(text);
     if (local !== null){
         loading.remove();
@@ -1302,8 +1317,10 @@ async function handleReply(text, loading){
         return;
     }
 
+    // 2) 联网 AI
     if (AI_CONFIG.mode === 'on'){
         try {
+            if (loading) loading.innerText = "联网搜索中...";
             var reply = await requestAI(text, false);
             loading.remove();
             pushAi(reply);
@@ -1312,21 +1329,24 @@ async function handleReply(text, loading){
             return;
         } catch (err) {
             console.warn('online AI failed:', err);
+            if (loading) loading.innerText = "联网超时，正在转为离线回复...";
+            await new Promise(function(resolve){ setTimeout(resolve, 800); });
+            loading.remove();
         }
     }
 
-    loading.remove();
+    // 3) 本地规则兜底
     var fallback = localAI(text);
     pushAi(fallback);
-    if (AI_CONFIG.mode === 'on'){
-        var note = document.createElement("div");
-        note.className = "msg system";
-        note.innerText = "联网 AI 暂时不可用，以上为离线回复。可点击「配置 AI」检查网络或密钥。";
-        var box = $("chatBox");
-        box.appendChild(note);
-        box.scrollTop = box.scrollHeight;
-        setTimeout(function(){ note.remove(); }, 8000);
-    }
+
+    var note = document.createElement("div");
+    note.className = "msg system";
+    note.innerText = "💡 联网超时，以上为离线回复。可点击右上角「配置 AI」检查网络。";
+    var box = $("chatBox");
+    box.appendChild(note);
+    box.scrollTop = box.scrollHeight;
+    setTimeout(function(){ note.remove(); }, 8000);
+
     isReplying = false;
     updateAiStatus();
 }
@@ -1360,6 +1380,47 @@ function localAction(text){
     var confirmed = handlePendingConfirm(t);
     if (confirmed !== null) return confirmed;
 
+    // ===== 优先处理考试意图（必须在添加任务之前） =====
+    var examSet = parseSetExam(t);
+    if (examSet){
+        var result = "已添加考试：\n";
+        if (examSet.type || examSet.date){
+            var examName = examSet.type || '考试';
+            addExam(examName, examSet.date);
+            if (examSet.type) result += "名称：" + examSet.type + "\n";
+            if (examSet.date) result += "日期：" + examSet.date + "\n";
+
+            // 自动生成备考任务
+            var tasksToAdd = [];
+            if (examName.indexOf('普通话') !== -1) {
+                tasksToAdd = [
+                    { name: '普通话发音练习', type: 'daily' },
+                    { name: '普通话朗读练习', type: 'daily' },
+                    { name: '普通话模拟测试', type: 'weekly', targetCount: 1 }
+                ];
+            } else {
+                tasksToAdd = [
+                    { name: examName + ' 基础复习', type: 'daily' },
+                    { name: examName + ' 真题练习', type: 'weekly', targetCount: 1 }
+                ];
+            }
+
+            var addedCount = 0;
+            tasksToAdd.forEach(function(task) {
+                if (!hasSameTask(task.name)) {
+                    addTaskToList(task.name, task.type, task.targetCount || 1);
+                    addedCount++;
+                }
+            });
+            if (addedCount > 0) {
+                result += "已自动生成 " + addedCount + " 个备考任务";
+            }
+            return result;
+        }
+        return "请告诉我考试名称和日期，例如：设置考试 四六级 12月14日";
+    }
+
+    // ===== 再处理添加任务 =====
     var addParsed = parseAddTask(t);
     if (addParsed){
         if (hasSameTask(addParsed.name)){
@@ -1373,6 +1434,7 @@ function localAction(text){
         return msg;
     }
 
+    // ===== 删除任务 =====
     var delName = parseDeleteTask(t);
     if (delName){
         var found = taskList.find(function(x){ return x.name.indexOf(delName) !== -1 || delName.indexOf(x.name) !== -1; });
@@ -1384,19 +1446,7 @@ function localAction(text){
         return "已删除任务：【" + found.name + "】";
     }
 
-    var examSet = parseSetExam(t);
-    if (examSet){
-        var result = "已添加考试：\n";
-        if (examSet.type || examSet.date){
-            addExam(examSet.type || '考试', examSet.date);
-            if (examSet.type) result += "名称：" + examSet.type + "\n";
-            if (examSet.date) result += "日期：" + examSet.date;
-        } else {
-            return "请告诉我考试名称和日期，例如：设置考试 四六级 12月14日";
-        }
-        return result;
-    }
-
+    // ===== 查任务 =====
     if (isTaskQuery(t)){
         var todayTasks = taskList.filter(isRequiredTask);
         var undone = todayTasks.filter(function(x){ return !getTaskProgress(x).isComplete; });
@@ -1450,19 +1500,31 @@ function parseDeleteTask(text){
     return t || null;
 }
 
-function parseSetExam(text){
+function parseSetExam(text) {
     var result = { type: null, date: null };
 
-    var dateMatch = text.match(/(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
-    if (dateMatch){
-        result.date = dateMatch[1] + '-' + String(dateMatch[2]).padStart(2,'0') + '-' + String(dateMatch[3]).padStart(2,'0');
+    var dateMatch = text.match(/(?:(\d{4})[-\/年]?)?(\d{1,2})[-\/月](\d{1,2})/);
+    if (dateMatch) {
+        var year = dateMatch[1] || new Date().getFullYear();
+        result.date = year + '-' + String(dateMatch[2]).padStart(2, '0') + '-' + String(dateMatch[3]).padStart(2, '0');
     }
 
     var preset = ['小升初', '中考', '高考', '四六级', '考研', '专升本'];
-    for (var i = 0; i < preset.length; i++){
-        if (text.indexOf(preset[i]) !== -1){ result.type = preset[i]; break; }
+    for (var i = 0; i < preset.length; i++) {
+        if (text.indexOf(preset[i]) !== -1) { result.type = preset[i]; break; }
     }
     if (!result.type && /四级|六级|CET/.test(text)) result.type = '四六级';
+
+    if (!result.type) {
+        var match = text.match(/(?:报考|要考|考证|考)\s*([\u4e00-\u9fa5A-Za-z0-9]{2,10})/);
+        if (match && match[1]) {
+            var name = match[1];
+            if (name !== '试' && name !== '考试' && name !== '完' && name !== '了') {
+                name = name.replace(/考试$/, '');
+                result.type = name;
+            }
+        }
+    }
 
     if (!result.type && !result.date) return null;
     return result;
@@ -2115,7 +2177,8 @@ function updateObstacleStats(){
     var sorted = Object.keys(counts).sort(function(a,b){ return counts[b] - counts[a]; });
     var top = sorted[0];
     var pct = Math.round(counts[top] / total * 100);
-    el.innerHTML = '最常阻碍你的是「<b>' + top + '</b>」（' + counts[top] + ' 次，占 ' + pct + '%）。<br>建议：' + (OBSTACLE_ADVICE[top] || '调整计划试试');
+    var advice = OBSTACLE_ADVICE[top] || '记录具体原因，复盘时再调整安排';
+    el.innerHTML = '最常阻碍你的是「<b>' + top + '</b>」（' + counts[top] + ' 次，占 ' + pct + '%）。<br>建议：' + advice;
 }
 function renderObstacles(){
     var dom = $('obstacleList');
@@ -2145,9 +2208,27 @@ function renderObstacles(){
     }
     updateObstacleStats();
 }
+
+// 阻力日志：自定义原因显示/隐藏
+$('obstacleReason').addEventListener('change', function(){
+    if (this.value === '其他') {
+        $('customObstacleReason').style.display = 'block';
+    } else {
+        $('customObstacleReason').style.display = 'none';
+        $('customObstacleReason').value = '';
+    }
+});
+
 $('obstacleAddBtn').addEventListener('click', function(){
-    obstacles.push({ id: uid(), date: getToday(), reason: $('obstacleReason').value });
+    var reason = $('obstacleReason').value;
+    if (reason === '其他') {
+        var custom = $('customObstacleReason').value.trim();
+        if (!custom) { alert('请填写具体的阻力原因'); return; }
+        reason = custom;
+    }
+    obstacles.push({ id: uid(), date: getToday(), reason: reason });
     save('obstacles_v1', obstacles);
+    $('customObstacleReason').value = '';
     renderObstacles();
     toast('已记录');
 });
@@ -2393,52 +2474,6 @@ $('adviceAiBtn').addEventListener('click', async function(){
     btn.disabled = false;
     btn.innerText = '让 AI 写详细建议';
 });
-/* ===================== 页面加载 ===================== */
-window.onload = function(){
-    checkSetup();
-
-    migrateExams();
-    renderExams();
-    renderRingtoneUI();
-    calcCountAndShow();
-
-    var hashTab = (location.hash || "").replace("#", "");
-    if (["ai","task","calendar","pomodoro","note","exam","goal","growth","resource"].indexOf(hashTab) !== -1){
-        switchTab(hashTab);
-    }
-
-    renderTask();
-    loadCheck();
-    renderNoteList();
-    renderChat();
-    updatePomodoroDisplay();
-    updatePomodoroCount();
-    updateAiStatus();
-
-    applyGoalDecay();
-    renderGoals();
-    renderDecTree();
-    renderWeekly();
-    renderCapsules();
-    renderObstacles();
-    renderResources();
-    renderMilestones();
-    updateEnergyTip();
-    updatePeriodicTip();
-
-    setTimeout(function(){
-        var history = load("checkHistory", []);
-        var today = getToday();
-        var unchecked = history.indexOf(today) === -1;
-        var required = taskList.filter(isRequiredTask);
-        var undone = required.filter(function(t){ return !getTaskProgress(t).isComplete; });
-        if (unchecked && undone.length > 0 && chatHistory.length === 0){
-            chatHistory.push({ role: "ai", content: "你好！今天还没打卡，还有 " + undone.length + " 个必做任务待完成。\n\n需要我帮你安排优先级吗？也可以直接跟我说\"帮我加个每天背单词的任务\"。" });
-            renderChat();
-            saveChat();
-        }
-    }, 800);
-};
 
 /* ===================== 日历（完整模块） ===================== */
 var calYear = new Date().getFullYear();
@@ -2618,3 +2653,50 @@ function showDayDetail(date, marks){
         setTimeout(renderCalendar, 300);
     });
 })();
+
+/* ===================== 页面加载 ===================== */
+window.onload = function(){
+    checkSetup();
+
+    migrateExams();
+    renderExams();
+    renderRingtoneUI();
+    calcCountAndShow();
+
+    var hashTab = (location.hash || "").replace("#", "");
+    if (["ai","task","calendar","pomodoro","note","exam","goal","growth","resource"].indexOf(hashTab) !== -1){
+        switchTab(hashTab);
+    }
+
+    renderTask();
+    loadCheck();
+    renderNoteList();
+    renderChat();
+    updatePomodoroDisplay();
+    updatePomodoroCount();
+    updateAiStatus();
+
+    applyGoalDecay();
+    renderGoals();
+    renderDecTree();
+    renderWeekly();
+    renderCapsules();
+    renderObstacles();
+    renderResources();
+    renderMilestones();
+    updateEnergyTip();
+    updatePeriodicTip();
+
+    setTimeout(function(){
+        var history = load("checkHistory", []);
+        var today = getToday();
+        var unchecked = history.indexOf(today) === -1;
+        var required = taskList.filter(isRequiredTask);
+        var undone = required.filter(function(t){ return !getTaskProgress(t).isComplete; });
+        if (unchecked && undone.length > 0 && chatHistory.length === 0){
+            chatHistory.push({ role: "ai", content: "你好！今天还没打卡，还有 " + undone.length + " 个必做任务待完成。\n\n需要我帮你安排优先级吗？也可以直接跟我说\"帮我加个每天背单词的任务\"。" });
+            renderChat();
+            saveChat();
+        }
+    }, 800);
+};
