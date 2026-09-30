@@ -90,14 +90,18 @@ function getTaskProgress(task){
     return { current: 0, target: 1, isComplete: false };
 }
 
-/* 必做任务：单次 + 每日；周/月为可选 */
 function isRequiredTask(task){
+    if (task.scheduledDate){
+        return task.scheduledDate === getToday() && !task.done;
+    }
     if (task.type === 'once') return !task.done;
     if (task.type === 'daily') return true;
     return false;
 }
-/* 任务今天是否出现在列表里 */
 function isTaskToday(task){
+    if (task.scheduledDate){
+        return task.scheduledDate === getToday() && !task.done;
+    }
     if (task.type === 'once') return !task.done;
     if (task.type === 'daily') return true;
     if (task.type === 'weekly' || task.type === 'monthly') {
@@ -107,7 +111,6 @@ function isTaskToday(task){
     }
     return false;
 }
-/* 周/月任务今天是否做过 */
 function isPeriodicDoneToday(task){
     if (task.type !== 'weekly' && task.type !== 'monthly') return false;
     return (task.completedDates || []).indexOf(getToday()) !== -1;
@@ -118,7 +121,7 @@ function hasSameTask(name){
     return taskList.some(function(t){ return normalizeName(t.name) === target; });
 }
 
-function addTaskToList(name, type, targetCount, energy, dependsOn){
+function addTaskToList(name, type, targetCount, energy, dependsOn, scheduledDate){
     taskList.push({
         id: uid(),
         name: name,
@@ -128,7 +131,8 @@ function addTaskToList(name, type, targetCount, energy, dependsOn){
         done: false,
         createdAt: getToday(),
         energy: energy || 'mid',
-        dependsOn: dependsOn || null
+        dependsOn: dependsOn || null,
+        scheduledDate: scheduledDate || null
     });
     save("task_v2", taskList);
     renderTask();
@@ -136,9 +140,7 @@ function addTaskToList(name, type, targetCount, energy, dependsOn){
 }
 
 var currentFilter = 'all';
-
 var ENERGY_NAMES = { high: '高耗能', mid: '中等耗能', low: '轻松' };
-var ENERGY_ORDER = { high: 0, mid: 1, low: 2 };
 
 function getDepTask(task){
     if (!task.dependsOn) return null;
@@ -192,6 +194,15 @@ function renderTask(){
             tag.innerText = TYPE_NAMES[item.type];
             name.appendChild(tag);
 
+            if (item.scheduledDate){
+                var dateTag = document.createElement("span");
+                dateTag.className = "tag";
+                dateTag.style.background = "#E8F2FD";
+                dateTag.style.color = "#1D5FA8";
+                dateTag.innerText = item.scheduledDate;
+                name.appendChild(dateTag);
+            }
+
             var reqBadge = document.createElement("span");
             var required = isRequiredTask(item);
             reqBadge.className = "req-badge " + (required ? "req-required" : "req-optional");
@@ -234,14 +245,14 @@ function renderTask(){
                 bDone.disabled = true;
             } else if (item.type === 'weekly' || item.type === 'monthly'){
                 var doneTodayFlag = isPeriodicDoneToday(item);
-                if (p.isComplete){
-                    bDone.className = "btn-ghost";
-                    bDone.innerText = "已完成";
-                    bDone.disabled = true;
-                } else if (doneTodayFlag){
+                if (doneTodayFlag){
                     bDone.className = "btn-ghost";
                     bDone.innerText = "撤销今日";
                     bDone.onclick = function(){ toggleTask(idx); };
+                } else if (p.isComplete){
+                    bDone.className = "btn-ghost";
+                    bDone.innerText = "已完成";
+                    bDone.disabled = true;
                 } else {
                     bDone.className = "btn-primary";
                     bDone.innerText = "完成今日";
@@ -356,10 +367,11 @@ $('taskForm').addEventListener('submit', function(e){
 
 function toggleTask(idx){
     var task = taskList[idx];
-    var p = getTaskProgress(task);
     var today = getToday();
 
-    if (task.type === 'once'){
+    if (task.scheduledDate){
+        task.done = !task.done;
+    } else if (task.type === 'once'){
         task.done = !task.done;
     } else {
         if (task.completedDates.indexOf(today) === -1){
@@ -582,23 +594,26 @@ function renderRingtoneUI(){
     var tip = $('ringtoneTip');
     if (tip) tip.innerText = RING_NAMES[cfg.ringtone] || '经典';
 }
-$('ringTestBtn').addEventListener('click', function(){
+var ringTestBtn = $('ringTestBtn');
+if (ringTestBtn) ringTestBtn.addEventListener('click', function(){
     ensureAudioCtx();
     playBeep();
 });
-$('ringUploadBtn').addEventListener('click', function(){ $('ringFile').click(); });
-$('ringFile').addEventListener('change', function(){
+var ringUploadBtn = $('ringUploadBtn');
+if (ringUploadBtn) ringUploadBtn.addEventListener('click', function(){ $('ringFile').click(); });
+var ringFile = $('ringFile');
+if (ringFile) ringFile.addEventListener('change', function(){
     var f = this.files[0];
     if (!f) return;
-    if (f.size > 300 * 1024){ alert('音频文件需小于 300KB，请选一段更短的铃声'); this.value = ''; return; }
-    if (!/^audio\//.test(f.type)){ alert('请选择音频文件（mp3/wav/m4a 等）'); this.value = ''; return; }
+    if (f.size > 300 * 1024){ alert('音频文件需小于 300KB'); this.value = ''; return; }
+    if (!/^audio\//.test(f.type)){ alert('请选择音频文件'); this.value = ''; return; }
     var r = new FileReader();
     r.onload = function(){
         pomodoroConfig.ringtone = 'custom';
         pomodoroConfig.customDataUrl = r.result;
         save('pomodoroConfig', pomodoroConfig);
         renderRingtoneUI();
-        toast('自定义铃声已保存，到时会自动播放');
+        toast('自定义铃声已保存');
     };
     r.readAsDataURL(f);
     this.value = '';
@@ -715,7 +730,7 @@ function renderExams(){
 $('examAddBtn').addEventListener('click', function(){
     var name = $('examNameInput').value.trim();
     var date = $('examNewDate').value;
-    if (!name){ alert('请输入考试名称，如：四六级 / 专升本'); return; }
+    if (!name){ alert('请输入考试名称，如：四级 / 六级'); return; }
     if (!date){ alert('请选择考试日期'); return; }
     addExam(name, date);
     $('examNameInput').value = '';
@@ -763,7 +778,7 @@ function calcCountAndShow(){
     }
     updateRiskPanel();
     updateHeaderChip();
-    updateExamAdvice();
+    if (typeof updateExamAdvice === 'function') updateExamAdvice();
 }
 
 /* ===================== 每日打卡 ===================== */
@@ -943,9 +958,15 @@ var TASK_TEMPLATES = {
         {name:'每周写一篇语文作文', type:'weekly', targetCount:1},
         {name:'每周整理错题本', type:'weekly', targetCount:1}
     ],
-    '四六级': [
+    '四级': [
         {name:'每日背单词50个', type:'daily'},
         {name:'每日听力练习20分钟', type:'daily'},
+        {name:'每周写一篇英语作文', type:'weekly', targetCount:1},
+        {name:'每周做一套真题', type:'weekly', targetCount:1}
+    ],
+    '六级': [
+        {name:'每日背单词60个', type:'daily'},
+        {name:'每日听力练习30分钟', type:'daily'},
         {name:'每周写一篇英语作文', type:'weekly', targetCount:1},
         {name:'每周做一套真题', type:'weekly', targetCount:1}
     ],
@@ -1059,7 +1080,7 @@ var PROVIDERS = {
         url: 'https://openrouter.ai/api/v1/chat/completions',
         defaultModel: 'deepseek/deepseek-chat-v3-0324:free',
         keyName: 'OpenRouter API Key',
-        hint: '聚合多家模型，含免费模型。注册 openrouter.ai 后创建密钥；模型可改，如 deepseek/deepseek-chat。'
+        hint: '聚合多家模型，含免费模型。注册 openrouter.ai 后创建密钥。'
     }
 };
 
@@ -1111,7 +1132,7 @@ async function requestAI(text, isTest){
     }
 
     var ctrl = new AbortController();
-    var timer = setTimeout(function(){ ctrl.abort(); }, 12000); // 修复：超时改为12秒
+    var timer = setTimeout(function(){ ctrl.abort(); }, 12000);
     try {
         var res = await fetch(cfg.url, {
             method: 'POST',
@@ -1239,7 +1260,6 @@ async function testAi(){
         btn.innerText = '测试连接';
     }
 }
-
 /* ===================== 对话系统 ===================== */
 var chatHistory = load("chat", []);
 var isReplying = false;
@@ -1250,7 +1270,7 @@ function renderChat(){
     if (chatHistory.length === 0){
         var tip = document.createElement("div");
         tip.className = "msg ai loading";
-        tip.innerText = "你好！我是你的学习规划助手，已支持联网。\n可以这样问我：\n· 帮我加一个每天背50个单词的任务\n· 我考四级，帮我安排今天\n· 今天还有什么任务\n· 怎么背单词更高效？";
+        tip.innerText = "你好！我是你的学习规划助手，已支持联网。\n可以这样问我：\n· 帮我加一个每天背50个单词的任务\n· 我明年1月20号要考四级\n· 今天还有什么任务\n· 怎么背单词更高效？";
         box.appendChild(tip);
         return;
     }
@@ -1267,7 +1287,6 @@ function appendChatMessage(m) {
     var box = $("chatBox");
     var loadingTip = box.querySelector('.msg.loading');
     if (loadingTip) loadingTip.remove();
-
     var div = document.createElement("div");
     div.className = "msg " + (m.role === 'system' ? 'system' : m.role);
     div.textContent = m.content;
@@ -1287,7 +1306,6 @@ function sendMsg(autoText){
     var text = autoText || input.value.trim();
     if (!text || isReplying) return;
     if (!autoText) input.value = "";
-
     var userMsg = { role: "user", content: text };
     chatHistory.push(userMsg);
     appendChatMessage(userMsg);
@@ -1302,12 +1320,10 @@ function sendMsg(autoText){
 
     isReplying = true;
     updateAiStatus('busy');
-
     setTimeout(function(){ handleReply(text, loading); }, 150);
 }
 
 async function handleReply(text, loading){
-    // 1) 本地可执行的动作意图优先
     var local = localAction(text);
     if (local !== null){
         loading.remove();
@@ -1317,7 +1333,6 @@ async function handleReply(text, loading){
         return;
     }
 
-    // 2) 联网 AI
     if (AI_CONFIG.mode === 'on'){
         try {
             if (loading) loading.innerText = "联网搜索中...";
@@ -1335,7 +1350,6 @@ async function handleReply(text, loading){
         }
     }
 
-    // 3) 本地规则兜底
     var fallback = localAI(text);
     pushAi(fallback);
 
@@ -1350,8 +1364,6 @@ async function handleReply(text, loading){
     isReplying = false;
     updateAiStatus();
 }
-
-function sendChip(text){ sendMsg(text); }
 
 function saveChat(){ save("chat", chatHistory.slice(-50)); }
 function clearChat(){
@@ -1376,11 +1388,10 @@ var pendingAction = null;
 
 function localAction(text){
     var t = text.trim();
-
     var confirmed = handlePendingConfirm(t);
     if (confirmed !== null) return confirmed;
 
-    // ===== 优先处理考试意图（必须在添加任务之前） =====
+    // 优先处理考试意图
     var examSet = parseSetExam(t);
     if (examSet){
         var result = "已添加考试：\n";
@@ -1390,7 +1401,6 @@ function localAction(text){
             if (examSet.type) result += "名称：" + examSet.type + "\n";
             if (examSet.date) result += "日期：" + examSet.date + "\n";
 
-            // 自动生成备考任务
             var tasksToAdd = [];
             if (examName.indexOf('普通话') !== -1) {
                 tasksToAdd = [
@@ -1412,15 +1422,13 @@ function localAction(text){
                     addedCount++;
                 }
             });
-            if (addedCount > 0) {
-                result += "已自动生成 " + addedCount + " 个备考任务";
-            }
+            if (addedCount > 0) result += "已自动生成 " + addedCount + " 个备考任务";
             return result;
         }
-        return "请告诉我考试名称和日期，例如：设置考试 四六级 12月14日";
+        return "请告诉我考试名称和日期，例如：设置考试 四级 12月14日";
     }
 
-    // ===== 再处理添加任务 =====
+    // 添加任务
     var addParsed = parseAddTask(t);
     if (addParsed){
         if (hasSameTask(addParsed.name)){
@@ -1434,7 +1442,7 @@ function localAction(text){
         return msg;
     }
 
-    // ===== 删除任务 =====
+    // 删除任务
     var delName = parseDeleteTask(t);
     if (delName){
         var found = taskList.find(function(x){ return x.name.indexOf(delName) !== -1 || delName.indexOf(x.name) !== -1; });
@@ -1446,7 +1454,7 @@ function localAction(text){
         return "已删除任务：【" + found.name + "】";
     }
 
-    // ===== 查任务 =====
+    // 查任务
     if (isTaskQuery(t)){
         var todayTasks = taskList.filter(isRequiredTask);
         var undone = todayTasks.filter(function(x){ return !getTaskProgress(x).isComplete; });
@@ -1467,7 +1475,6 @@ function isTaskQuery(text){
 
 function parseAddTask(text){
     if (!/(添加|加|新增|新建|创建|记一下|记个)/.test(text)) return null;
-
     var t = text;
     t = t.replace(/帮我|请|麻烦你|麻烦|我要|我想|然后|好的|嗯|你能|能不能|可以/g, '');
     t = t.replace(/添加|新增|新建|创建|记一下|记个|加/g, '');
@@ -1502,25 +1509,44 @@ function parseDeleteTask(text){
 
 function parseSetExam(text) {
     var result = { type: null, date: null };
+    var now = new Date();
+    var year = now.getFullYear();
 
-    var dateMatch = text.match(/(?:(\d{4})[-\/年]?)?(\d{1,2})[-\/月](\d{1,2})/);
-    if (dateMatch) {
-        var year = dateMatch[1] || new Date().getFullYear();
-        result.date = year + '-' + String(dateMatch[2]).padStart(2, '0') + '-' + String(dateMatch[3]).padStart(2, '0');
+    // 相对年份
+    if (/前年/.test(text)) year = year - 2;
+    else if (/去年/.test(text)) year = year - 1;
+    else if (/明年/.test(text)) year = year + 1;
+    else if (/后年/.test(text)) year = year + 2;
+    else {
+        var ym = text.match(/(\d+)\s*年后/);
+        if (ym) year = year + parseInt(ym[1]);
+    }
+    var ey = text.match(/(\d{4})\s*[-\/年]/);
+    if (ey) year = parseInt(ey[1]);
+
+    // 月日
+    var dm = text.match(/(\d{1,2})\s*[-\/月]\s*(\d{1,2})/);
+    if (dm) {
+        result.date = year + '-' + String(dm[1]).padStart(2, '0') + '-' + String(dm[2]).padStart(2, '0');
     }
 
-    var preset = ['小升初', '中考', '高考', '四六级', '考研', '专升本'];
-    for (var i = 0; i < preset.length; i++) {
-        if (text.indexOf(preset[i]) !== -1) { result.type = preset[i]; break; }
+    // 名称识别
+    if (/(四|4)\s*级|CET[\s\-]?4/i.test(text)) {
+        result.type = '四级';
+    } else if (/(六|6)\s*级|CET[\s\-]?6/i.test(text)) {
+        result.type = '六级';
+    } else {
+        var preset = ['小升初', '中考', '高考', '考研', '专升本', '普通话', '教师资格证'];
+        for (var i = 0; i < preset.length; i++) {
+            if (text.indexOf(preset[i]) !== -1) { result.type = preset[i]; break; }
+        }
     }
-    if (!result.type && /四级|六级|CET/.test(text)) result.type = '四六级';
 
     if (!result.type) {
         var match = text.match(/(?:报考|要考|考证|考)\s*([\u4e00-\u9fa5A-Za-z0-9]{2,10})/);
         if (match && match[1]) {
-            var name = match[1];
-            if (name !== '试' && name !== '考试' && name !== '完' && name !== '了') {
-                name = name.replace(/考试$/, '');
+            var name = match[1].replace(/考试$/, '').replace(/^[的\s]+/, '');
+            if (name && name !== '试' && name !== '完' && name !== '了') {
                 result.type = name;
             }
         }
@@ -1533,7 +1559,6 @@ function parseSetExam(text) {
 function handlePendingConfirm(text){
     if (!pendingAction) return null;
     var t = text.trim();
-
     if (/^(是|是的|对|确定|确认|好|好的|yes|y|要|添加|加|ok)/i.test(t)){
         if (pendingAction.type === 'addTask'){
             var d = pendingAction.data;
@@ -1568,7 +1593,7 @@ function localAI(text){
     var t = text.trim();
 
     if (/^(你好|hi|hello|嗨|在吗|哈喽|hi~)/i.test(t) && t.length < 12){
-        return "你好呀！我是你的学习规划助手。\n\n我可以帮你：\n· 加任务：\"帮我加个每天背50个单词的任务\"\n· 删任务：\"删除背单词\"\n· 设考试：\"我考四级\"\n· 查任务：\"今天还有什么任务\"\n· 要建议：\"帮我安排今天\"\n\n也可以问我学习方法~";
+        return "你好呀！我是你的学习规划助手。\n\n我可以帮你：\n· 加任务：\"帮我加个每天背50个单词的任务\"\n· 删任务：\"删除背单词\"\n· 设考试：\"我明年1月20号要考四级\"\n· 查任务：\"今天还有什么任务\"\n· 要建议：\"帮我安排今天\"\n\n也可以问我学习方法~";
     }
 
     if (/番茄钟|番茄|pomodoro|怎么专注/.test(t)){
@@ -1583,9 +1608,7 @@ function localAI(text){
         var undoneA = todayTasksA.filter(function(x){ return !getTaskProgress(x).isComplete; });
         var day = calcCount();
         var dayInfo = (day !== null && day > 0) ? "距离【" + getExamLabel() + "】还有 " + day + " 天。" : "";
-
         if (undoneA.length === 0) return "今日必做任务都完成了！" + dayInfo + "建议复盘错题，或预习明天内容。";
-
         var priority = { daily: 1, weekly: 2, monthly: 2, once: 3 };
         var sorted = undoneA.slice().sort(function(a, b){
             return (priority[a.type] || 9) - (priority[b.type] || 9);
@@ -1626,7 +1649,7 @@ function localAI(text){
         return "不客气！有需要随时找我，加油！";
     }
 
-    return "我可以帮你：\n\n· 加任务：\"帮我加个每天背50个单词的任务\"\n· 删任务：\"删除背单词\"\n· 设考试：\"我考四级\"\n· 查任务：\"今天还有什么任务\"\n· 要建议：\"帮我安排今天\"\n· 番茄钟：\"推荐番茄钟\"\n\n也可以问我学习方法哦~";
+    return "我可以帮你：\n\n· 加任务：\"帮我加个每天背50个单词的任务\"\n· 删任务：\"删除背单词\"\n· 设考试：\"我明年1月20号要考四级\"\n· 查任务：\"今天还有什么任务\"\n· 要建议：\"帮我安排今天\"\n· 番茄钟：\"推荐番茄钟\"\n\n也可以问我学习方法哦~";
 }
 
 /* ===================== 任务类型联动 ===================== */
@@ -1635,7 +1658,7 @@ $("taskType").onchange = function(){
     $("taskCountWrap").style.display = (t === 'weekly' || t === 'monthly') ? 'flex' : 'none';
 };
 
-/* ===================== 精力建议（只统计必做任务） ===================== */
+/* ===================== 精力建议 ===================== */
 function updateEnergyTip(){
     var el = $('energyTip');
     if (!el) return;
@@ -1660,19 +1683,16 @@ function updateEnergyTip(){
 function updatePeriodicTip(){
     var box = $('periodicTip');
     if (!box) return;
-
     var weekly = taskList.filter(function(t){
         return t.type === 'weekly' && !getTaskProgress(t).isComplete;
     });
     var monthly = taskList.filter(function(t){
         return t.type === 'monthly' && !getTaskProgress(t).isComplete;
     });
-
     if (!weekly.length && !monthly.length){
         box.style.display = 'none';
         return;
     }
-
     var lines = [];
     if (weekly.length){
         var parts = weekly.map(function(t){
@@ -1688,7 +1708,6 @@ function updatePeriodicTip(){
         });
         lines.push('本月：' + parts2.join('　·　'));
     }
-
     box.style.display = 'block';
     box.innerHTML = lines.join('<br>');
 }
@@ -2165,8 +2184,7 @@ var OBSTACLE_ADVICE = {
     '偷懒': '把任务拆得更小，用「只学5分钟」先启动',
     '知识点太难': '先补前置基础，把难题拆成小步骤逐个攻克',
     '身体疲惫': '保证睡眠，疲惫时安排轻松任务恢复状态',
-    '外界干扰': '固定学习时段，把手机放远一点',
-    '其他': '记录具体原因，复盘时再调整安排'
+    '外界干扰': '固定学习时段，把手机放远一点'
 };
 function updateObstacleStats(){
     var el = $('obstacleStats');
@@ -2209,7 +2227,6 @@ function renderObstacles(){
     updateObstacleStats();
 }
 
-// 阻力日志：自定义原因显示/隐藏
 $('obstacleReason').addEventListener('change', function(){
     if (this.value === '其他') {
         $('customObstacleReason').style.display = 'block';
@@ -2490,23 +2507,28 @@ function getFirstWeekday(y, m){
 function collectDayMarks(){
     var marks = {};
     exams.forEach(function(e){
-        if (!marks[e.date]) marks[e.date] = { exam:[], task:false, pomo:0 };
+        if (!marks[e.date]) marks[e.date] = { exam:[], task:false, pomo:0, scheduled:[] };
         marks[e.date].exam.push(e.name);
     });
     taskList.forEach(function(t){
+        if (t.scheduledDate){
+            if (!marks[t.scheduledDate]) marks[t.scheduledDate] = { exam:[], task:false, pomo:0, scheduled:[] };
+            marks[t.scheduledDate].scheduled.push(t.name);
+            return;
+        }
         if (t.type === 'once') return;
         (t.completedDates || []).forEach(function(d){
-            if (!marks[d]) marks[d] = { exam:[], task:false, pomo:0 };
+            if (!marks[d]) marks[d] = { exam:[], task:false, pomo:0, scheduled:[] };
             marks[d].task = true;
         });
     });
     load('checkHistory', []).forEach(function(d){
-        if (!marks[d]) marks[d] = { exam:[], task:false, pomo:0 };
+        if (!marks[d]) marks[d] = { exam:[], task:false, pomo:0, scheduled:[] };
         marks[d].task = true;
     });
     var pr = load('pomodoroRecords', {});
     Object.keys(pr).forEach(function(d){
-        if (!marks[d]) marks[d] = { exam:[], task:false, pomo:0 };
+        if (!marks[d]) marks[d] = { exam:[], task:false, pomo:0, scheduled:[] };
         marks[d].pomo = pr[d];
     });
     return marks;
@@ -2570,7 +2592,12 @@ function renderCalendar(){
                     d3.className = 'dot pomo-dot';
                     wrap.appendChild(d3);
                 }
-                cell.appendChild(wrap);
+                if (m.scheduled && m.scheduled.length){
+                    var d4 = document.createElement('i');
+                    d4.className = 'dot plan-dot';
+                    wrap.appendChild(d4);
+                }
+                if (wrap.children.length > 0) cell.appendChild(wrap);
             }
 
             cell.addEventListener('click', function(){
@@ -2601,6 +2628,12 @@ function showDayDetail(date, marks){
         });
         has = true;
     }
+    if (m && m.scheduled && m.scheduled.length){
+        m.scheduled.forEach(function(name){
+            html += '<div class="detail-item"><span class="badge badge-plan">计划</span>' + escapeHtml(name) + '</div>';
+        });
+        has = true;
+    }
     doneTasks.forEach(function(t){
         html += '<div class="detail-item"><span class="badge badge-task">任务</span>' + escapeHtml(t.name) + '</div>';
         has = true;
@@ -2610,13 +2643,53 @@ function showDayDetail(date, marks){
         has = true;
     }
     if (!has){
-        html += '<div style="color:var(--ink-3)">这一天还没有记录</div>';
+        html += '<div style="color:var(--ink-3);margin-bottom:4px">这一天还没有记录</div>';
     }
+
+    html += '<div class="cal-add-task">' +
+            '<input type="text" id="calTaskInput" placeholder="给 ' + date + ' 加个任务…">' +
+            '<button class="btn-primary" id="calTaskAddBtn">添加</button>' +
+            '</div>';
+
     box.innerHTML = html;
     box.classList.add('show');
+
+    var addBtn = document.getElementById('calTaskAddBtn');
+    if (addBtn){
+        addBtn.onclick = function(){
+            var inp = document.getElementById('calTaskInput');
+            var name = (inp.value || '').trim();
+            if (!name) return;
+            if (hasSameTask(name)){
+                if (!confirm('任务【' + name + '】已存在，仍要添加吗？')) return;
+            }
+            taskList.push({
+                id: uid(),
+                name: name,
+                type: 'once',
+                targetCount: 1,
+                completedDates: [],
+                done: false,
+                createdAt: getToday(),
+                energy: 'mid',
+                dependsOn: null,
+                scheduledDate: date
+            });
+            save('task_v2', taskList);
+            renderTask();
+            var newMarks = collectDayMarks();
+            showDayDetail(date, newMarks);
+            toast('已添加任务到 ' + date);
+        };
+        var calInp = document.getElementById('calTaskInput');
+        if (calInp){
+            calInp.addEventListener('keydown', function(e){
+                if (e.key === 'Enter'){ e.preventDefault(); addBtn.click(); }
+            });
+        }
+    }
 }
 
-/* 绑定翻月按钮 */
 (function bindCalendarUI(){
     function bind(){
         var prev = document.getElementById('calPrevBtn');
@@ -2686,6 +2759,21 @@ window.onload = function(){
     renderMilestones();
     updateEnergyTip();
     updatePeriodicTip();
+
+    // Tab 滑动箭头
+    (function bindTabsArrow(){
+        var wrap = document.querySelector('.tabs-wrapper');
+        var tabs = document.getElementById('tabNav');
+        var arrow = document.getElementById('tabsArrow');
+        if (!wrap || !tabs || !arrow) return;
+        function updateArrow(){
+            var atEnd = tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 6;
+            arrow.classList.toggle('hide', atEnd);
+        }
+        tabs.addEventListener('scroll', updateArrow);
+        window.addEventListener('resize', updateArrow);
+        setTimeout(updateArrow, 200);
+    })();
 
     setTimeout(function(){
         var history = load("checkHistory", []);
